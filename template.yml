@@ -4,16 +4,12 @@ Transform: AWS::Serverless-2016-10-31
 
 Parameters:
   ApprovalStepArn:
-    Type: String
+    Type: CommaDelimitedList
     Description: Arn for the manual approval, format(arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name)
   ProjectName:
     Type: String
     Description: Project name or app name.
     Default: checkpoint
-  LogsRetention:
-    Type: Number
-    Description: No. of days to retain logs in Cloudwatch
-    Default: 7
   SlackVerificationToken:
     Type: String
     Description: Verification Token for Approval Handler Function
@@ -45,6 +41,7 @@ Resources:
   SlackNotification:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: ./slack-notification
       MemorySize: 128
       Timeout: 3
       Handler: lambda_function.lambda_handler
@@ -80,81 +77,11 @@ Resources:
           Type: SNS
           Properties:
             Topic: !Ref SNSTopic
-      InlineCode: |
-          # This function is invoked via SNS when the CodePipeline manual approval action starts.
-          # It will take the details from this approval notification and sent an interactive message to Slack that allows users to approve or cancel the deployment.
-
-          import os
-          import json
-          import logging
-          import urllib.parse
-
-          from base64 import b64decode
-          from urllib.request import Request, urlopen
-          from urllib.error import URLError, HTTPError
-
-          # This is passed as a plain-text environment variable for ease of demonstration.
-          # Consider encrypting the value with KMS or use an encrypted parameter in Parameter Store for production deployments.
-          SLACK_WEBHOOK_URL = os.environ['SLACK_WEBHOOK_URL']
-
-          logger = logging.getLogger()
-          logger.setLevel(logging.INFO)
-
-          def lambda_handler(event, context):
-              print("Received event: " + json.dumps(event, indent=2))
-              message = event["Records"][0]["Sns"]["Message"]
-
-              data = json.loads(message)
-              console_link = data["consoleLink"]
-              token = data["approval"]["token"]
-              codepipeline_name = data["approval"]["pipelineName"]
-              action_name = data["approval"]["actionName"]
-              stage_name = data["approval"]["stageName"]
-
-              slack_message = {
-                  "text":  action_name + " for <" + console_link + "|" + codepipeline_name + "> is awaiting approval.",
-                  "attachments": [
-                      {
-                          "text": "Confirm whether to deploy or not.",
-                          "fallback": "You are unable to promote a production deployment.",
-                          "callback_id": "wopr_game",
-                          "color": "#3AA3E3",
-                          "attachment_type": "default",
-                          "actions": [
-                              {
-                                  "name": "deployment",
-                                  "text": "Confirm",
-                                  "style": "danger",
-                                  "type": "button",
-                                  "value": json.dumps({"actionName": action_name, "approve": True, "consoleLink": console_link, "codePipelineToken": token, "codePipelineName": codepipeline_name, "stageName": stage_name}),
-                                  "confirm": {
-                                      "title": "Do you really want to do this?",
-                                      "text": "This will trigger deployment of " + codepipeline_name + " to production environment.",
-                                      "ok_text": "Confirm",
-                                      "dismiss_text": "Cancel"
-                                  }
-                              },
-                              {
-                                  "name": "deployment",
-                                  "text": "Cancel",
-                                  "type": "button",
-                                  "value": json.dumps({"actionName": action_name, "approve": False, "consoleLink": console_link, "codePipelineToken": token, "codePipelineName": codepipeline_name, "stageName": stage_name})
-                              }
-                          ]
-                      }
-                  ]
-              }
-
-              req = Request(SLACK_WEBHOOK_URL, json.dumps(slack_message).encode('utf-8'))
-
-              response = urlopen(req)
-              response.read()
-
-              return None
 
   ApprovalHandler:
     Type: AWS::Serverless::Function
     Properties:
+      CodeUri: ./approval-handler
       MemorySize: 128
       Timeout: 3
       Handler: lambda_function.lambda_handler
@@ -172,12 +99,10 @@ Resources:
       PackageType: Zip
       Policies:
         - Statement:
-            - Sid: VisualEditor0
-              Effect: Allow
+            - Effect: Allow
               Action:
                 - codepipeline:PutApprovalResult
-              Resource:
-                - !Ref ApprovalStepArn
+              Resource: !Ref ApprovalStepArn
       SnapStart:
         ApplyOn: None
       Events:
@@ -186,58 +111,3 @@ Resources:
           Properties:
             Path: /ApprovalHandler
             Method: POST
-      InlineCode: |
-        # This function is triggered via API Gateway when a user acts on the Slack interactive message sent by approval_requester.py.
-        from urllib.parse import parse_qs
-        import json
-        import os
-        import boto3
-        import base64
-
-        SLACK_VERIFICATION_TOKEN = os.environ['SLACK_VERIFICATION_TOKEN']
-
-        #Triggered by API Gateway
-        #It kicks off a particular CodePipeline project
-        def lambda_handler(event, context):
-        	# print("Received event: " + json.dumps(event, indent=2))
-        	body = parse_qs(base64.b64decode(event['body']).decode('utf-8'))
-        	payload = json.loads(body['payload'][0])
-
-        	# Validate Slack token
-        	if SLACK_VERIFICATION_TOKEN == payload['token']:
-        		details = json.loads(payload['actions'][0]['value'])
-        		send_slack_message(details)
-        		action_name = details["actionName"]
-
-        		# This will replace the interactive message with a simple text response.
-        		# You can implement a more complex message update if you would like.
-        		return  {
-        			"isBase64Encoded": "false",
-        			"statusCode": 200,
-        			"body": action_name + " for <" + details['consoleLink'] + "|" + details['codePipelineName'] + "> was :white_check_mark: approved by <@" + payload['user']['id'] + ">."
-        				if details["approve"]
-        				else action_name + " for <" + details['consoleLink'] + "|" + details['codePipelineName'] + "> was :x: denied by <@" + payload['user']['id'] + ">."
-        		}
-        	else:
-        		return  {
-        			"isBase64Encoded": "false",
-        			"statusCode": 403,
-        			"body": "Failed to verify incoming request from Slack."
-        		}
-
-
-        def send_slack_message(action_details):
-        	codepipeline_status = "Approved" if action_details["approve"] else "Rejected"
-        	codepipeline_name = action_details["codePipelineName"]
-        	token = action_details["codePipelineToken"]
-        	action_name = action_details["actionName"]
-        	stage_name = action_details["stageName"]
-
-        	client = boto3.client('codepipeline')
-        	response_approval = client.put_approval_result(
-        							pipelineName=codepipeline_name,
-        							stageName=stage_name,
-        							actionName=action_name,
-        							result={'summary':'','status':codepipeline_status},
-        							token=token)
-        	print(response_approval)
