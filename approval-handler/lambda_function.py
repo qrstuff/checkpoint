@@ -1,58 +1,53 @@
-
-# This function is triggered via API Gateway when a user acts on the Slack interactive message sent by approval_requester.py.
-from urllib.parse import parse_qs
+import base64
+import boto3
 import json
 import os
-import boto3
-import base64
+from urllib.parse import parse_qs
 
-SLACK_VERIFICATION_TOKEN = os.environ['SLACK_VERIFICATION_TOKEN']
 
-#Triggered by API Gateway
-#It kicks off a particular CodePipeline project
+SLACK_VERIFICATION_TOKEN = os.environ["SLACK_VERIFICATION_TOKEN"]
+
 def lambda_handler(event, context):
-	# print("Received event: " + json.dumps(event, indent=2))
-	if event['isBase64Encoded']:
-		body = parse_qs(base64.b64decode(event['body']).decode('utf-8'))
-	else:
-		body = parse_qs(event['body'])
-	payload = json.loads(body['payload'][0])
+    # for debugging only
+    # print("received event:", json.dumps(event, indent=2))
 
-	# Validate Slack token
-	if SLACK_VERIFICATION_TOKEN == payload['token']:
-		details = json.loads(payload['actions'][0]['value'])
-		send_slack_message(details)
-		action_name = details["actionName"]
+    query_str = base64.b64decode(event["body"]).decode("utf-8") if event["isBase64Encoded"] else event["body"]
 
-		# This will replace the interactive message with a simple text response.
-		# You can implement a more complex message update if you would like.
-		return  {
-			"isBase64Encoded": "false",
-			"statusCode": 200,
-			"body": action_name + " for <" + details['consoleLink'] + "|" + details['codePipelineName'] + "> was :white_check_mark: approved by <@" + payload['user']['id'] + ">."
-				if details["approve"]
-				else action_name + " for <" + details['consoleLink'] + "|" + details['codePipelineName'] + "> was :x: denied by <@" + payload['user']['id'] + ">."
-		}
-	else:
-		return  {
-			"isBase64Encoded": "false",
-			"statusCode": 403,
-			"body": "Failed to verify incoming request from Slack."
-		}
+    body = parse_qs(query_str)
+    payload = json.loads(body["payload"][0])
 
-def send_slack_message(action_details):
-	codepipeline_status = "Approved" if action_details["approve"] else "Rejected"
-	codepipeline_name = action_details["codePipelineName"]
-	token = action_details["codePipelineToken"]
-	action_name = action_details["actionName"]
-	stage_name = action_details["stageName"]
-	client = boto3.client('codepipeline')
+    if SLACK_VERIFICATION_TOKEN != payload["token"]:
+        return {
+            "isBase64Encoded": "false",
+            "statusCode": 403,
+            "body": "The security token does not match SLACK_VERIFICATION_TOKEN."
+        }
 
-	response_approval = client.put_approval_result(
-							pipelineName=codepipeline_name,
-							stageName=stage_name,
-							actionName=action_name,
-							result={'summary':'','status':codepipeline_status},
-							token=token)
+    details = json.loads(payload["actions"][0]["value"])
+    send_approval_to_aws(details)
 
-	print(response_approval)
+    msg = "*{}* action for <{}|{}> was :white_check_mark: approved by <@{}>." if details["approve"] else "*{}* action for <{}|{}> was :x: denied by <@{}>"
+
+    return  {
+        "isBase64Encoded": "false",
+        "statusCode": 200,
+        "body": msg.format(details["actionName"], details["consoleLink"], details["codePipelineName"], payload["user"]["id"]),
+    }
+
+def send_approval_to_aws(action_details):
+    codepipeline_status = "Approved" if action_details["approve"] else "Rejected"
+    codepipeline_name = action_details["codePipelineName"]
+    token = action_details["codePipelineToken"]
+    action_name = action_details["actionName"]
+    stage_name = action_details["stageName"]
+    client = boto3.client("codepipeline")
+
+    response_approval = client.put_approval_result(
+										pipelineName=codepipeline_name,
+										stageName=stage_name,
+										actionName=action_name,
+										result={"summary": "", "status": codepipeline_status},
+										token=token)
+
+    # for debugging only
+    # print("approval response:", response_approval)
