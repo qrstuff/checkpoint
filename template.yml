@@ -6,6 +6,7 @@ Parameters:
   ApprovalStepArn:
     Type: CommaDelimitedList
     Description: Arn for the manual approval, format(arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name)
+    Default: '*'
   ProjectName:
     Type: String
     Description: Project name or app name.
