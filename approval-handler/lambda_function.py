@@ -28,7 +28,7 @@ def lambda_handler(event, context):
 
     msg = "*{}* action for <{}|{}> was :white_check_mark: approved by <@{}>." if details["approve"] else "*{}* action for <{}|{}> was :x: denied by <@{}>"
 
-    return  {
+    return {
         "isBase64Encoded": "false",
         "statusCode": 200,
         "body": msg.format(details["actionName"], details["consoleLink"], details["codePipelineName"], payload["user"]["id"]),
