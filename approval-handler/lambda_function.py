@@ -12,7 +12,10 @@ SLACK_VERIFICATION_TOKEN = os.environ['SLACK_VERIFICATION_TOKEN']
 #It kicks off a particular CodePipeline project
 def lambda_handler(event, context):
 	# print("Received event: " + json.dumps(event, indent=2))
-	body = parse_qs(base64.b64decode(event['body']).decode('utf-8'))
+	if event['isBase64Encoded']:
+		body = parse_qs(base64.b64decode(event['body']).decode('utf-8'))
+	else:
+		body = parse_qs(event['body'])
 	payload = json.loads(body['payload'][0])
 
 	# Validate Slack token
