@@ -55,8 +55,8 @@ def send_approval_to_aws(action_details):
     token = action_details["codePipelineToken"]
     action_name = action_details["actionName"]
     stage_name = action_details["stageName"]
-    client = boto3.client("codepipeline")
 
+    client = boto3.client("codepipeline")
     response_approval = client.put_approval_result(
         pipelineName=codepipeline_name,
         stageName=stage_name,
