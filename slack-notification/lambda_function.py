@@ -4,12 +4,13 @@ import boto3
 from urllib.request import Request, urlopen
 from datetime import datetime
 
-channel_id = os.environ.get("CHANNEL_ID")
+
 
 def lambda_handler(event, context):
     # for debugging only
     # print("received event:", json.dumps(event, indent=2))
 
+    channel_id = os.environ.get("CHANNEL_ID")
     message = event["Records"][0]["Sns"]["Message"]
     data = json.loads(message)
     dynamodb = boto3.client('dynamodb')
@@ -23,9 +24,11 @@ def lambda_handler(event, context):
 
     data = {
         "channel": channel_id,
+        "icon_emoji": ":pencil:",
         "text": "*{}* action for <{}|{}> is awaiting approval.".format(
             action_name, console_link, codepipeline_name
         ),
+        "username": codepipeline_name,
         "attachments": [
             {
                 "text": "Confirm whether to continue or not.",
@@ -76,6 +79,16 @@ def lambda_handler(event, context):
         ],
     }
 
+    headers = {
+        'Authorization': 'Bearer '+str(os.environ.get("SLACK_OAUTH_TOKEN")),
+        'Content-type': 'application/json; charset=utf-8',
+    }
+
+    req = Request('https://slack.com/api/chat.postMessage', headers=headers, data=json.dumps(data).encode("utf-8"), method='POST')
+
+    response = json.loads(urlopen(req).read().decode('utf-8'))
+    message_ts = response["message"]["ts"]
+
     current_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     dynamodb.put_item(
@@ -83,6 +96,9 @@ def lambda_handler(event, context):
         Item={
             'message_id': {
                 'S' : message_id
+            },
+            'message_ts': {
+                'S': message_ts
             },
             'timestamp': {
                 'S' : current_timestamp
@@ -102,11 +118,3 @@ def lambda_handler(event, context):
         }
     )
 
-    headers = {
-        'Authorization': 'Bearer '+str(os.environ.get("SLACK_OAUTH_TOKEN")),
-        'Content-type': 'application/json; charset=utf-8',
-    }
-
-    req = Request('https://slack.com/api/chat.postMessage', headers=headers, data=json.dumps(data).encode("utf-8"), method='POST')
-    response = urlopen(req)
-    print(response.read().decode('utf-8'))
