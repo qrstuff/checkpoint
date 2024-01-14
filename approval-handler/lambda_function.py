@@ -57,6 +57,16 @@ def send_approval_to_aws(action_details):
     stage_name = action_details["stageName"]
 
     client = boto3.client("codepipeline")
+    dynamodb = boto3.client('dynamodb')
+
+    dynamodb_response = dynamodb.delete_item(
+        Key={
+            'pipeline_name': {
+                'S': codepipeline_name,
+            }
+        },
+        TableName='ManualApprovalTracker01',
+    )
     response_approval = client.put_approval_result(
         pipelineName=codepipeline_name,
         stageName=stage_name,

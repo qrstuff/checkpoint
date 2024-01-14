@@ -7,16 +7,20 @@ Parameters:
     Type: CommaDelimitedList
     Description: Arn for the manual approval, format(arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name)
     Default: '*'
+  ChannelId:
+    Type: String
+    Description: Channel ID of the slack channel
   ProjectName:
     Type: String
     Description: Project name or app name.
     Default: checkpoint
+  SlackOAuthToken:
+    Type: String
+    Description: OAuth Token for API request to slack
+    Default: checkpoint
   SlackVerificationToken:
     Type: String
     Description: Verification Token for Approval Handler Function
-  SlackWebhookUrl:
-    Type: String
-    Description: Slack Webhook URL for Approval Notification Function
   SnsTopicName:
     Type: String
     Description: SNS Topic Name
@@ -39,6 +43,20 @@ Resources:
       Protocol: LAMBDA
       TopicArn: !Ref SNSTopic
 
+  DynamoTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: pipeline_name
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        -
+          AttributeName: pipeline_name
+          KeyType: HASH
+      TableName: ManualApprovalTracker01
+
   SlackNotification:
     Type: AWS::Serverless::Function
     Properties:
@@ -53,7 +71,8 @@ Resources:
         Size: 512
       Environment:
         Variables:
-          SLACK_WEBHOOK_URL: !Ref SlackWebhookUrl
+          CHANNEL_ID: !Ref ChannelId
+          SLACK_OAUTH_TOKEN: !Ref SlackOAuthToken
       EventInvokeConfig:
         MaximumEventAgeInSeconds: 21600
         MaximumRetryAttempts: 2
@@ -71,6 +90,12 @@ Resources:
               Resource:
                 - >-
                   arn:aws:logs:eu-west-1:961354904951:log-group:/aws/lambda/SlackNotificationFunction:*
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource:
+                - !GetAtt DynamoTable.Arn
+
       SnapStart:
         ApplyOn: None
       Events:
@@ -94,6 +119,7 @@ Resources:
       Environment:
         Variables:
           SLACK_VERIFICATION_TOKEN: !Ref SlackVerificationToken
+          CHANNEL_ID: !Ref ChannelId
       EventInvokeConfig:
         MaximumEventAgeInSeconds: 21600
         MaximumRetryAttempts: 2
@@ -104,6 +130,11 @@ Resources:
               Action:
                 - codepipeline:PutApprovalResult
               Resource: !Ref ApprovalStepArn
+            - Effect: Allow
+              Action:
+                - dynamodb:DeleteItem
+              Resource:
+                - !GetAtt DynamoTable.Arn
       SnapStart:
         ApplyOn: None
       Events:

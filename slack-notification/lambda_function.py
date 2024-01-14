@@ -1,10 +1,10 @@
 import os
 import json
+import boto3
 from urllib.request import Request, urlopen
+from datetime import datetime
 
-
-SLACK_WEBHOOK_URL = os.environ["SLACK_WEBHOOK_URL"]
-
+channel_id = os.environ.get("CHANNEL_ID")
 
 def lambda_handler(event, context):
     # for debugging only
@@ -12,14 +12,17 @@ def lambda_handler(event, context):
 
     message = event["Records"][0]["Sns"]["Message"]
     data = json.loads(message)
+    dynamodb = boto3.client('dynamodb')
 
     console_link = data["consoleLink"]
     token = data["approval"]["token"]
     codepipeline_name = data["approval"]["pipelineName"]
     action_name = data["approval"]["actionName"]
     stage_name = data["approval"]["stageName"]
+    message_id = event['Records'][0]['Sns']['MessageId']
 
-    slack_message = {
+    data = {
+        "channel": channel_id,
         "text": "*{}* action for <{}|{}> is awaiting approval.".format(
             action_name, console_link, codepipeline_name
         ),
@@ -73,7 +76,37 @@ def lambda_handler(event, context):
         ],
     }
 
-    req = Request(SLACK_WEBHOOK_URL, json.dumps(slack_message).encode("utf-8"))
+    current_timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    dynamodb.put_item(
+        TableName='ManualApprovalTracker01',
+        Item={
+            'message_id': {
+                'S' : message_id
+            },
+            'timestamp': {
+                'S' : current_timestamp
+            },
+            'pipeline_name': {
+                'S' : codepipeline_name
+            },
+            'pipeline_stage': {
+                'S' : stage_name
+            },
+            'pipeline_action': {
+                'S' : action_name
+            },
+            'pipeline_token': {
+                'S' : token
+            }
+        }
+    )
+
+    headers = {
+        'Authorization': 'Bearer '+str(os.environ.get("SLACK_OAUTH_TOKEN")),
+        'Content-type': 'application/json; charset=utf-8',
+    }
+
+    req = Request('https://slack.com/api/chat.postMessage', headers=headers, data=json.dumps(data).encode("utf-8"), method='POST')
     response = urlopen(req)
-    response.read()
-    return None
+    print(response.read().decode('utf-8'))
