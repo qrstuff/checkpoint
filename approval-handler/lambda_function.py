@@ -20,6 +20,7 @@ def lambda_handler(event, context):
 
     body = parse_qs(query_str)
     payload = json.loads(body["payload"][0])
+    table_name = os.environ.get("TABLE_NAME")
 
     if SLACK_VERIFICATION_TOKEN != payload["token"]:
         return {
@@ -55,17 +56,18 @@ def send_approval_to_aws(action_details):
     token = action_details["codePipelineToken"]
     action_name = action_details["actionName"]
     stage_name = action_details["stageName"]
+    table_name = os.environ.get("TABLE_NAME")
 
     client = boto3.client("codepipeline")
-    dynamodb = boto3.client('dynamodb')
+    dynamodb = boto3.client("dynamodb")
 
     dynamodb_response = dynamodb.delete_item(
         Key={
-            'pipeline_name': {
-                'S': codepipeline_name,
+            "pipeline_name": {
+                "S": codepipeline_name,
             }
         },
-        TableName='ManualApprovalTracker01',
+        TableName=table_name,
     )
     response_approval = client.put_approval_result(
         pipelineName=codepipeline_name,
