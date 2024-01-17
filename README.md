@@ -1,8 +1,8 @@
 # checkpoint
 
-Cloudformation template for creating the AWS components for [Slack](https://slack.com/) notification for [Codepipeline Manual Approval Actions](https://docs.aws.amazon.com/codepipeline/latest/userguide/approvals.html).
+CloudFormation template for creating the AWS components for [Slack](https://slack.com/) notification for [CodePipeline Manual Approval Actions](https://docs.aws.amazon.com/codepipeline/latest/userguide/approvals.html).
 
-The template also includes a lambda function that runs on schedule to reject any pending approvals beyond a specified expiry value.
+The template also includes a Lambda function that runs on schedule to reject any pending approvals beyond a specified expiry value.
 
 ## Usage
 
@@ -10,7 +10,7 @@ The template also includes a lambda function that runs on schedule to reject any
 
 1. [Install](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html) and [configure](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) AWS CLI.
 
-2. Create [slack app](https://api.slack.com/start/quickstart#creating).
+2. Create [Slack app](https://api.slack.com/start/quickstart#creating).
 
 3. Add the following [scopes](https://api.slack.com/start/quickstart#scopes) for bot token OAuth.
 ```
@@ -23,7 +23,7 @@ chat:write.customize
 
 5. Add a [manual approval](https://docs.aws.amazon.com/codepipeline/latest/userguide/approvals-action-add.html) action in the Codepipeline.
 
-6. Create S3 bucket to store the packaged code used in deployment of lambda functions.
+6. Create S3 bucket to store the packaged code used in deployment of Lambda functions.
 
 #### Template Deployment:
 
@@ -48,31 +48,31 @@ Following parameters are available for customization. Defaults can be set in the
 ```yaml
   ApprovalStepArn:
     Type: CommaDelimitedList
-    Description: Arn for the manual approval, format(arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name)
+    Description: Arn for the manual approval, e.g., format (arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name).
   ChannelId:
     Type: String
-    Description: Channel ID of the slack channel
+    Description: Channel ID of the Slack channel.
   CronExpression:
     Type: String
-    Description: Cron for running the pending approval rejection function
+    Description: Cron expression for running the pending approval rejection function.
   ExpiryInHours:
     Type: Number
-    Description: Expiry of the approval check in no. of hours
+    Description: Expiry of the approval check in no. of hours.
   ProjectName:
     Type: String
     Description: Project name or app name.
   SlackOAuthToken:
     Type: String
-    Description: OAuth Token for API request to slack
+    Description: OAuth token for API request to Slack.
   SlackVerificationToken:
     Type: String
     Description: Verification Token for Approval Handler Function
   SnsTopicName:
     Type: String
-    Description: SNS Topic Name
+    Description: SNS topic name.
   TableName:
     Type: String
-    Description: Table name to be created in DynamoDB
+    Description: Table name to be created in DynamoDB.
 ```
 
 
@@ -82,4 +82,4 @@ See the [LICENSE](LICENSE) file.
 
 ## Notes
 
-From the team at [QRStuff](https://qrstuff.com/) with <3 for automation with [Cloudformation](https://aws.amazon.com/cloudformation/).
+From the team at [QRStuff](https://qrstuff.com/) with ❤️ for automation with [Cloudformation](https://aws.amazon.com/cloudformation/).
