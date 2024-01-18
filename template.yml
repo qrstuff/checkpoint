@@ -148,6 +148,14 @@ Resources:
                 - dynamodb:DeleteItem
               Resource:
                 - !GetAtt DynamoTable.Arn
+      SnapStart:
+        ApplyOn: None
+      Events:
+        Api1:
+          Type: Api
+          Properties:
+            Path: /ApprovalHandler
+            Method: POST
 
   PendingApprovalHandler:
     Type: AWS::Serverless::Function
