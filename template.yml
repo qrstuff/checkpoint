@@ -180,6 +180,7 @@ Resources:
             - Effect: Allow
               Action:
                 - dynamodb:DeleteItem
+                - dynamodb:Scan
               Resource:
                 - !GetAtt DynamoTable.Arn
       SnapStart:
