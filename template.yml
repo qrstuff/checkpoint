@@ -6,18 +6,10 @@ Parameters:
   ApprovalStepArn:
     Type: CommaDelimitedList
     Description: Arn for the manual approval, format(arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name)
-    Default: '*'
+    Default: "*"
   ChannelId:
     Type: String
     Description: Channel ID of the slack channel
-  CronExpression:
-    Type: String
-    Description: Cron for running the pending approval rejection function
-    Default: '0 0 * * ? *'
-  ExpiryInHours:
-    Type: Number
-    Description: Expiry of the approval check in no. of hours
-    Default: 48
   ProjectName:
     Type: String
     Description: Project name or app name.
@@ -32,11 +24,11 @@ Parameters:
   SnsTopicName:
     Type: String
     Description: SNS Topic Name
-    Default: Approval-Notifications
+    Default: Approval-Notifications-01
   TableName:
     Type: String
     Description: Table name to be created in DynamoDB
-    Default: ManualApprovalTracker01
+    Default: ManualApprovalTracker
 
 Resources:
   SNSTopic:
@@ -59,13 +51,11 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        -
-          AttributeName: pipeline_name
+        - AttributeName: action_execution_id
           AttributeType: S
       BillingMode: PAY_PER_REQUEST
       KeySchema:
-        -
-          AttributeName: pipeline_name
+        - AttributeName: action_execution_id
           KeyType: HASH
       TableName: !Ref TableName
 
@@ -111,7 +101,7 @@ Resources:
       SnapStart:
         ApplyOn: None
       Events:
-        SNS1:
+        SNS:
           Type: SNS
           Properties:
             Topic: !Ref SNSTopic
@@ -130,7 +120,6 @@ Resources:
         Size: 512
       Environment:
         Variables:
-          CHANNEL_ID: !Ref ChannelId
           SLACK_VERIFICATION_TOKEN: !Ref SlackVerificationToken
           TABLE_NAME: !Ref TableName
       EventInvokeConfig:
@@ -143,9 +132,10 @@ Resources:
               Action:
                 - codepipeline:PutApprovalResult
               Resource: !Ref ApprovalStepArn
+        - Statement:
             - Effect: Allow
               Action:
-                - dynamodb:DeleteItem
+                - dynamodb:UpdateItem
               Resource:
                 - !GetAtt DynamoTable.Arn
       SnapStart:
@@ -157,10 +147,10 @@ Resources:
             Path: /ApprovalHandler
             Method: POST
 
-  PendingApprovalHandler:
+  ApprovalResultHandler:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: ./pending-approval-handler
+      CodeUri: ./approval-result-handler
       MemorySize: 128
       Timeout: 3
       Handler: lambda_function.lambda_handler
@@ -172,7 +162,6 @@ Resources:
       Environment:
         Variables:
           CHANNEL_ID: !Ref ChannelId
-          EXPIRY_IN_HOURS: !Ref ExpiryInHours
           SLACK_OAUTH_TOKEN: !Ref SlackOAuthToken
           TABLE_NAME: !Ref TableName
       EventInvokeConfig:
@@ -183,27 +172,26 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
-                - codepipeline:PutApprovalResult
-              Resource: !Ref ApprovalStepArn
-            - Effect: Allow
-              Action:
                 - dynamodb:DeleteItem
                 - dynamodb:Scan
+                - dynamodb:GetItem
               Resource:
                 - !GetAtt DynamoTable.Arn
       SnapStart:
         ApplyOn: None
       Events:
-        Schedule1:
-          Type: ScheduleV2
+        CloudwatchEvent1:
+          Type: CloudWatchEvent
           Properties:
-            ScheduleExpression: !Join [
-              "",
-              [
-                "cron",
-                "(",
-                !Ref CronExpression,
-                ")"
-              ]
-            ]
-
+            Pattern:
+              source:
+                - aws.codepipeline
+              detail-type:
+                - CodePipeline Action Execution State Change
+              detail:
+                state:
+                  - SUCCEEDED
+                  - FAILED
+                type:
+                  category:
+                    - Approval
