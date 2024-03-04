@@ -144,7 +144,7 @@ Resources:
         Api1:
           Type: Api
           Properties:
-            Path: /ApprovalHandlerTest
+            Path: /ApprovalHandler
             Method: POST
 
   ApprovalResultHandler:
