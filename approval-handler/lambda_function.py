@@ -9,9 +9,6 @@ SLACK_VERIFICATION_TOKEN = os.environ["SLACK_VERIFICATION_TOKEN"]
 
 
 def lambda_handler(event, context):
-    # for debugging only
-    # print("received event:", json.dumps(event, indent=2))
-
     query_str = (
         base64.b64decode(event["body"]).decode("utf-8")
         if event["isBase64Encoded"]
@@ -66,6 +63,3 @@ def send_approval_to_aws(action_details):
         result={"summary": "", "status": codepipeline_status},
         token=token,
     )
-
-    # for debugging only
-    # print("approval response:", response_approval)

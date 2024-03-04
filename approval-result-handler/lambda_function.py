@@ -68,9 +68,9 @@ def lambda_handler(event, context):
         method="POST",
     )
 
-    response = json.loads(urlopen(req).read().decode("utf-8"))
+    urlopen(req).read().decode("utf-8")
 
-    dynamodb_response = dynamodb.delete_item(
+    dynamodb.delete_item(
         Key={
             "action_execution_id": {
                 "S": action_execution_id,

@@ -6,8 +6,6 @@ from datetime import datetime
 
 
 def lambda_handler(event, context):
-    # for debugging only
-    # print("received event:", json.dumps(event, indent=2))
 
     channel_id = os.environ.get("CHANNEL_ID")
     table_name = os.environ.get("TABLE_NAME")
