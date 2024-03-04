@@ -107,6 +107,8 @@ def lambda_handler(event, context):
             "pipeline_name": {"S": codepipeline_name},
             "pipeline_stage": {"S": stage_name},
             "pipeline_action": {"S": action_name},
-            "pipeline_token": {"S": token},
+            "action_execution_id": {"S": token},
+            "console_link": {"S": console_link},
+            "slack_user": {"S": ""},
         },
     )
