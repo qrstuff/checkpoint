@@ -1,0 +1,35 @@
+{
+    "version": "0",
+    "id": "3734dead-5e42-3c4d-7add-027e30ec960f",
+    "detail-type": "CodePipeline Action Execution State Change",
+    "source": "aws.codepipeline",
+    "account": "961354904951",
+    "time": "2024-02-28T04:04:42Z",
+    "region": "eu-west-1",
+    "resources": [
+        "arn:aws:codepipeline:eu-west-1:961354904951:test-pipeline"
+    ],
+    "detail": {
+        "pipeline": "test-pipeline",
+        "execution-id": "5bcdbff1-543-4622-b73b-d92a6b83f375",
+        "start-time": "2024-02-28T03:50:49.660Z",
+        "stage": "Deploy",
+        "execution-result": {
+            "external-execution-summary": "Rejected by arn:aws:sts::961354904951:assumed-role/checkpointest-ApprovalHandlerRole-Vq0CN8AV1qKu/checkpointest-ApprovalHandler-1hy8jrvFlMts",
+            "external-execution-id": "be2a9eb0-962e-46eb-99f7-7ae835f4f806",
+            "error-code": "JobFailed"
+        },
+        "action-execution-id": "be2a9eb0-962e-46eb-99f7-7ae835f4f806",
+        "action": "DeploymentCheck",
+        "state": "FAILED",
+        "region": "eu-west-1",
+        "type": {
+            "owner": "AWS",
+            "provider": "Manual",
+            "category": "Approval",
+            "version": "1"
+        },
+        "version": 2,
+        "pipeline-execution-attempt": 1
+    }
+}

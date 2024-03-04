@@ -7,12 +7,12 @@ from datetime import datetime, timedelta
 
 def lambda_handler(event, context):
     channel_id = os.environ.get("CHANNEL_ID")
-    current_time = datetime.strptime(
-        datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "%d/%m/%Y %H:%M:%S"
-    )
+    # current_time = datetime.strptime(
+    #     datetime.now().strftime("%d/%m/%Y %H:%M:%S"), "%d/%m/%Y %H:%M:%S"
+    # )
 
     dynamodb = boto3.client("dynamodb")
-    codepipeline = boto3.client("codepipeline")
+    # codepipeline = boto3.client("codepipeline")
     table_name = os.environ.get("TABLE_NAME")
 
     db_response = dynamodb.scan(TableName=table_name)

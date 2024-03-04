@@ -2,7 +2,7 @@
 
 CloudFormation template for creating the AWS components for [Slack](https://slack.com/) notification for [CodePipeline Manual Approval Actions](https://docs.aws.amazon.com/codepipeline/latest/userguide/approvals.html).
 
-The template also includes a Lambda function that runs on schedule to reject any pending approvals beyond a specified expiry value.
+It also contains a lambda handler function to update the slack message according to the received approval/denial event from slack, console or codepipeline timeout source.
 
 ## Usage
 
@@ -21,7 +21,7 @@ chat:write.customize
 
 4. [Install and authorize](https://api.slack.com/start/quickstart#installing) the app for the workspace.
 
-5. Add a [manual approval](https://docs.aws.amazon.com/codepipeline/latest/userguide/approvals-action-add.html) action in the Codepipeline.
+5. Add a [manual approval](https://docs.aws.amazon.com/codepipeline/latest/userguide/approvals-action-add.html) action in the Codepipeline. Set a timeout in the manual approval step.
 
 6. Create S3 bucket to store the packaged code used in deployment of Lambda functions.
 
@@ -30,16 +30,17 @@ chat:write.customize
 The cloudformation template can be deployed directly using cli. Two steps are required: packaging the template to upload the lambda function code and creating the stack.
 
 ```shell
-aws cloudformation package --template-file ./template.yml --s3-bucket s3-bucket-name --output-template-file out.yml
+aws cloudformation package --template-file ./template.yml --s3-bucket checkpointest --output-template-file out.yml
 
-aws cloudformation create-stack --stack-name checkpoint --template-body file://out.yml \
+aws cloudformation create-stack --stack-name checkpointest --template-body file://out.yml \
 --parameters \
-ParameterKey=ProjectName,ParameterValue=project-name \
-ParameterKey=SlackVerificationToken,ParameterValue=slack-verfication-token \
-ParameterKey=SlackOAuthToken,ParameterValue=slack-oauth-token \
-ParameterKey=ChannelId,ParameterValue=slack-channel-id \
+ParameterKey=ProjectName,ParameterValue=checkpointest \
+ParameterKey=SlackVerificationToken,ParameterValue=9bJVwa3JyQ1sEtoNNIlT96m8 \
+ParameterKey=SlackOAuthToken,ParameterValue=xoxb-456293491349-6450191577376-fi3qcHVRXkSUuiKmPsHABnqM \
+ParameterKey=ChannelId,ParameterValue=C03PULHKCLS \
 --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
 ```
+After completion of stack deployment, edit the Manual Approval Step in pipeline. In the field **SNS topic ARN -** ***optional***, select the SNS topic Approval-Notification, save the pipeline and **Release Changes**.
 
 #### Available Parameters
 
@@ -48,16 +49,10 @@ Following parameters are available for customization. Defaults can be set in the
 ```yaml
   ApprovalStepArn:
     Type: CommaDelimitedList
-    Description: Arn for the manual approval, e.g., format (arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name).
+    Description: Arn for the manual approval for IAM policy, e.g., format (arn:aws:codepipeline:region:aws-account-id:pipeline-name/stage-name/action-name).
   ChannelId:
     Type: String
     Description: Channel ID of the Slack channel.
-  CronExpression:
-    Type: String
-    Description: Cron expression for running the pending approval rejection function.
-  ExpiryInHours:
-    Type: Number
-    Description: Expiry of the approval check in no. of hours.
   ProjectName:
     Type: String
     Description: Project name or app name.
