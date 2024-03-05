@@ -9,9 +9,6 @@ SLACK_VERIFICATION_TOKEN = os.environ["SLACK_VERIFICATION_TOKEN"]
 
 
 def lambda_handler(event, context):
-    # for debugging only
-    # print("received event:", json.dumps(event, indent=2))
-
     query_str = (
         base64.b64decode(event["body"]).decode("utf-8")
         if event["isBase64Encoded"]
@@ -30,24 +27,24 @@ def lambda_handler(event, context):
         }
 
     details = json.loads(payload["actions"][0]["value"])
-    send_approval_to_aws(details)
 
-    msg = (
-        "*{}* action for <{}|{}> was :white_check_mark: approved by <@{}>."
-        if details["approve"]
-        else "*{}* action for <{}|{}> was :x: denied by <@{}>"
+    token = details["codePipelineToken"]
+    dynamodb = boto3.client("dynamodb")
+    dynamodb_response = dynamodb.update_item(
+        TableName=table_name,
+        Key={"action_execution_id": {"S": token}},
+        UpdateExpression="SET slack_user = :input1",
+        ExpressionAttributeValues={
+            ":input1": {"S": payload["user"]["id"]},
+        },
+        ReturnValues="UPDATED_NEW",
     )
 
-    return {
-        "isBase64Encoded": False,
-        "statusCode": 200,
-        "body": msg.format(
-            details["actionName"],
-            details["consoleLink"],
-            details["codePipelineName"],
-            payload["user"]["id"],
-        ),
-    }
+    send_approval_to_aws(details)
+
+    msg = "Awaiting approval response."
+
+    return {"isBase64Encoded": False, "statusCode": 200, "body": msg}
 
 
 def send_approval_to_aws(action_details):
@@ -56,19 +53,9 @@ def send_approval_to_aws(action_details):
     token = action_details["codePipelineToken"]
     action_name = action_details["actionName"]
     stage_name = action_details["stageName"]
-    table_name = os.environ.get("TABLE_NAME")
 
     client = boto3.client("codepipeline")
-    dynamodb = boto3.client("dynamodb")
 
-    dynamodb_response = dynamodb.delete_item(
-        Key={
-            "pipeline_name": {
-                "S": codepipeline_name,
-            }
-        },
-        TableName=table_name,
-    )
     response_approval = client.put_approval_result(
         pipelineName=codepipeline_name,
         stageName=stage_name,
@@ -76,6 +63,3 @@ def send_approval_to_aws(action_details):
         result={"summary": "", "status": codepipeline_status},
         token=token,
     )
-
-    # for debugging only
-    # print("approval response:", response_approval)

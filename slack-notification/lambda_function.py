@@ -6,8 +6,6 @@ from datetime import datetime
 
 
 def lambda_handler(event, context):
-    # for debugging only
-    # print("received event:", json.dumps(event, indent=2))
 
     channel_id = os.environ.get("CHANNEL_ID")
     table_name = os.environ.get("TABLE_NAME")
@@ -107,6 +105,8 @@ def lambda_handler(event, context):
             "pipeline_name": {"S": codepipeline_name},
             "pipeline_stage": {"S": stage_name},
             "pipeline_action": {"S": action_name},
-            "pipeline_token": {"S": token},
+            "action_execution_id": {"S": token},
+            "console_link": {"S": console_link},
+            "slack_user": {"S": ""},
         },
     )
