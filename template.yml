@@ -85,14 +85,13 @@ Resources:
             - Effect: Allow
               Action:
                 - logs:CreateLogGroup
-              Resource: arn:aws:logs:eu-west-1:961354904951:*
+              Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
             - Effect: Allow
               Action:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
               Resource:
-                - >-
-                  arn:aws:logs:eu-west-1:961354904951:log-group:/aws/lambda/SlackNotificationFunction:*
+                - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/SlackNotificationFunction:*"
             - Effect: Allow
               Action:
                 - dynamodb:PutItem
