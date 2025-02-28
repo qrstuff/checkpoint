@@ -19,12 +19,13 @@ def lambda_handler(event, context):
     action_name = data["approval"]["actionName"]
     stage_name = data["approval"]["stageName"]
     message_id = event["Records"][0]["Sns"]["MessageId"]
+    commit_id = str(data["approval"]["customData"])[:7]
 
     data = {
         "channel": channel_id,
         "icon_emoji": ":pencil:",
-        "text": "*{}* action for <{}|{}> is awaiting approval.".format(
-            action_name, console_link, codepipeline_name
+        "text": "*{}* action for <{}|{}> for commit *{}* is awaiting approval.".format(
+            action_name, console_link, codepipeline_name, commit_id
         ),
         "username": codepipeline_name,
         "attachments": [
